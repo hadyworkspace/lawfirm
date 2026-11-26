@@ -13,12 +13,13 @@ function renderAgenda(v){
   let items = upcomingItems(0);
   if(tab==='اليوم') items = items.filter(i=>i.date===today);
   else if(tab==='الأسبوع') items = items.filter(i=>i.date>=today && i.date<=plusDays(7));
-  let html = `<div class="tabbing">${tabs.map(t=>`<button class="${t===tab?'on':''}" onclick="sessionStorage.setItem('atab','${t}');route()">${t}</button>`).join('')}</div><div class="card">`;
+  window._agendaItems = items;
+  let html = `<div class="tabbing">${tabs.map(t=>`<button class="${t===tab?'on':''}" onclick="sessionStorage.setItem('atab','${t}');route()">${t}</button>`).join('')}<button class="" onclick="exportWeekAgenda()" title="تصدير مواعيد الأسبوع لتقويم الهاتف">تصدير الأسبوع للتقويم</button></div><div class="card">`;
   if(!items.length) html += `<div class="empty"><div class="eic">${EMPTY_IC}</div>${tab==='اليوم'?'لا مواعيد اليوم. يومك فارغ.':tab==='الأسبوع'?'لا مواعيد خلال الأسبوع القادم.':'لا مواعيد. أضف جلسات من القضايا وتجديدات من الشركات.'}</div>`;
   let lastDay='';
   items.forEach(i=>{
     if(i.date!==lastDay){ lastDay=i.date; html += `<div><span class="agenda-day">${fmtDate(i.date)} · ${relDate(i.date)}</span></div>`; }
-    html += `<div class="list-item" onclick="location.hash='${i.ref}'"><div class="t">${esc(i.label)}</div><span class="pill ${i.date<today?'bad':i.date===today?'warn':''}">${i.kind}</span></div>`;
+    html += `<div class="list-item" onclick="location.hash='${i.ref}'"><div class="t">${esc(i.label)}</div><span style="display:flex;align-items:center;gap:6px"><button class="btn small ghost" style="padding:4px 8px" title="أضف للتقويم" onclick="event.stopPropagation();exportAgendaItem(${items.indexOf(i)})">${IC.cal||'تقويم'}</button><span class="pill ${i.date<today?'bad':i.date===today?'warn':''}">${i.kind}</span></span></div>`;
   });
   v.innerHTML = html + '</div>';
 }

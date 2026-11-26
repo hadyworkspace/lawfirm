@@ -58,17 +58,25 @@ const Sync = {
     this._unsub = this._doc().onSnapshot(snap=>{
       if(!snap.exists){ this._push(); return; }
       const r = snap.data() || {};
-      if(this._remoteApplying || (r.rev || 0) <= this.rev) return;
+      const remoteRev = r.rev || 0;
+      if(this._remoteApplying) return;
+      /* قواعد Firestore تمنع أي كتابة برقم مراجعة أقدم أو مساوٍ، فالخادم لا يتراجع أبدًا.
+         هنا نعتمد النسخة الأحدث، وفي حالة تساوي الرقم مع اختلاف البيانات (تضارب جهازين)
+         يعتمد هذا الجهاز نسخة الخادم حتى تتلاقى الأجهزة بدل أن تتباعد بصمت. */
+      const conflict = remoteRev === this.rev && typeof r.data === 'string' && r.data !== JSON.stringify(DB);
+      if(remoteRev < this.rev || (remoteRev === this.rev && !conflict)) return;
       this._remoteApplying = true;
-      this.rev = r.rev;
+      const gap = remoteRev > this.rev + 1;
+      this.rev = remoteRev;
       localStorage.setItem('lawfirm_sync_rev', String(this.rev));
       try{
-        const incoming = JSON.parse(r.data);
-        DB = incoming;
+        DB = JSON.parse(r.data);
         localStorage.setItem(DB_KEY, JSON.stringify(DB));
       }catch(e){}
       this._remoteApplying = false;
       route();
+      if(conflict) showToast('جهاز آخر عدّل البيانات في نفس الوقت — اعتُمدت النسخة الأحدث. راجع بياناتك.', 'warn');
+      else if(gap) showToast('وصلت تحديثات من جهاز آخر — راجع بياناتك', 'info');
     }, ()=>{ this.status = 'error'; });
   },
 
@@ -86,7 +94,10 @@ const Sync = {
       data: JSON.stringify(DB),
       rev: this.rev,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }).catch(()=>{ this.status = 'error'; });
+    }).catch(err=>{
+      if(err && err.code === 'permission-denied'){ this.pull(); }
+      else this.status = 'error';
+    });
   },
 
   async pull(){
@@ -95,7 +106,8 @@ const Sync = {
       const snap = await this._doc().get();
       if(!snap.exists) return false;
       const r = snap.data() || {};
-      if((r.rev || 0) > this.rev){
+      const conflict = (r.rev || 0) === this.rev && typeof r.data === 'string' && r.data !== JSON.stringify(DB);
+      if((r.rev || 0) > this.rev || conflict){
         this.rev = r.rev;
         localStorage.setItem('lawfirm_sync_rev', String(this.rev));
         DB = JSON.parse(r.data);

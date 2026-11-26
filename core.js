@@ -10,6 +10,14 @@ function load(){
 }
 function save(){ localStorage.setItem(DB_KEY, JSON.stringify(DB)); if(window.Sync) Sync.onSave(); }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function showToast(msg, kind){
+  let t = document.getElementById('toast');
+  if(!t){ t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.className = 'show ' + (kind || 'info');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>{ t.className = ''; }, 7000);
+}
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function fmtMoney(n){ n = Number(n)||0; return n.toLocaleString('ar-EG') + ' ج.م'; }
 function fmtDate(iso){
