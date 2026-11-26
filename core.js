@@ -17,12 +17,41 @@ function fmtDate(iso){
   try{ return new Date(iso+'T00:00:00').toLocaleDateString('ar-EG',{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return iso; }
 }
 function todayISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function plusDays(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function relDate(iso){
+  if(!iso) return '';
+  const t = todayISO();
+  if(iso===t) return 'اليوم';
+  if(iso===plusDays(1)) return 'غداً';
+  const days = Math.round((new Date(iso+'T00:00:00') - new Date(t+'T00:00:00'))/86400000);
+  if(days>1) return 'بعد ' + days.toLocaleString('ar-EG') + ' أيام';
+  if(days===-1) return 'أمس';
+  if(days<-1) return 'متأخر ' + (-days).toLocaleString('ar-EG') + ' أيام';
+  return '';
+}
 function monthKey(iso){ return (iso||'').slice(0,7); }
 function findCompany(id){ return DB.companies.find(c=>c.id===id); }
 function findCase(id){ return DB.cases.find(c=>c.id===id); }
 function findClient(id){ return DB.clients.find(c=>c.id===id); }
 function clientName(id){ const c=findClient(id); return c?c.name:'—'; }
 function delConfirm(msg, fn){ if(confirm(msg)) fn(); }
+
+/* الوضع الليلي */
+function applyTheme(t){
+  if(t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  try{ localStorage.setItem('lawfirm_theme', t||''); }catch(e){}
+}
+function toggleTheme(){ applyTheme(document.documentElement.dataset.theme==='dark' ? '' : 'dark'); }
+
+/* روابط الاتصال والواتساب */
+function normPhone(p){
+  p = String(p||'').replace(/\D/g,'');
+  if(p.startsWith('002')) p = p.slice(2);
+  else if(p.startsWith('01')) p = '2' + p;
+  return p;
+}
+function waLink(p){ p = normPhone(p); return p ? 'https://wa.me/' + p : ''; }
+function telLink(p){ p = String(p||'').replace(/[^\d+]/g,''); return p ? 'tel:' + p : ''; }
 
 /* خيارات مخصصة يتذكرها التطبيق لكل خانة */
 function customOpts(key){ try{ const a=JSON.parse(localStorage.getItem(CUSTOM_KEY)||'{}'); return a[key]||[]; }catch(e){ return []; } }
@@ -38,6 +67,10 @@ function rememberOpt(key,val){
 function openForm(title, fields, onSubmit, initial){
   initial = initial || {};
   const root = document.getElementById('modalRoot');
+  const optHtml = (o,v)=>{
+    const ov = typeof o==='object' ? o.v : o, ot = typeof o==='object' ? o.t : o;
+    return `<option value="${esc(ov)}" ${ov===v?'selected':''}>${esc(ot)}</option>`;
+  };
   const inputs = fields.map(f=>{
     const v = initial[f.key]!=null ? initial[f.key] : (f.value||'');
     let ctrl;
@@ -45,20 +78,21 @@ function openForm(title, fields, onSubmit, initial){
       const opts = [...f.options];
       customOpts(f.key).forEach(o=>{ if(!opts.includes(o)) opts.push(o); });
       if(v && !opts.includes(v)) opts.push(v);
-      ctrl = `<select name="${f.key}" onchange="comboToggle(this)">${opts.map(o=>`<option value="${esc(o)}" ${o===v?'selected':''}>${esc(o)}</option>`).join('')}<option value="${esc(OTHER)}">${OTHER}</option></select>` +
+      ctrl = `<select name="${f.key}" onchange="comboToggle(this)">${opts.map(o=>optHtml(o,v)).join('')}<option value="${esc(OTHER)}">${OTHER}</option></select>` +
         `<input name="${f.key}__other" type="text" placeholder="اكتب القيمة هنا…" style="display:none;margin-top:6px">`;
     }
-    else if(f.type==='select') ctrl = `<select name="${f.key}">${f.options.map(o=>`<option value="${esc(o)}" ${o===v?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+    else if(f.type==='select') ctrl = `<select name="${f.key}">${f.options.map(o=>optHtml(o,v)).join('')}</select>`;
     else if(f.type==='textarea') ctrl = `<textarea name="${f.key}" rows="3">${esc(v)}</textarea>`;
     else if(f.type==='date') ctrl = `<input name="${f.key}" type="date" value="${v || (f.optional?'':todayISO())}">`;
     else if(f.type==='number') ctrl = `<input name="${f.key}" type="number" inputmode="decimal" min="0" step="any" value="${esc(v)}" ${f.required?'required':''}>`;
+    else if(f.type==='tel') ctrl = `<input name="${f.key}" type="tel" inputmode="tel" value="${esc(v)}" placeholder="01xxxxxxxxx" ${f.required?'required':''}>`;
     else ctrl = `<input name="${f.key}" type="${f.type||'text'}" value="${esc(v)}" ${f.required?'required':''}>`;
     return `<label>${f.label}</label>${ctrl}`;
   }).join('');
   root.innerHTML = `<div class="overlay" onclick="if(event.target===this)closeForm()">
-    <div class="sheet"><h3>${title}</h3>
+    <div class="sheet"><div class="handle"></div><h3>${title}</h3>
     <form id="mform">${inputs}
-      <div class="btnrow"><button type="submit" class="btn gold">حفظ</button>
+      <div class="btnrow"><button type="submit" class="btn gold" style="flex:1">حفظ</button>
       <button type="button" class="btn ghost" onclick="closeForm()">إلغاء</button></div>
     </form></div></div>`;
   document.getElementById('mform').onsubmit = e=>{
@@ -89,6 +123,8 @@ function exportData(){
   a.href = URL.createObjectURL(blob);
   a.download = 'نسخة-احتياطية-' + todayISO() + '.json';
   a.click();
+  try{ localStorage.setItem('lawfirm_last_export', todayISO()); }catch(e){}
+  setTimeout(route, 300);
 }
 function importData(){
   const inp = document.createElement('input'); inp.type='file'; inp.accept='.json';
@@ -107,7 +143,7 @@ function route(){
   const parts = h.slice(2).split('/');
   const page = parts[0] || 'home';
   document.querySelectorAll('#bottomnav a').forEach(a=>a.classList.toggle('active', a.dataset.nav===page));
-  document.getElementById('pageHeading').textContent = TITLES[page] || '';
+  document.getElementById('pageHeading').textContent = page==='home' ? '' : (TITLES[page] || '');
   const v = document.getElementById('view');
   window.scrollTo(0,0);
   if(page==='companies' && parts[1]) renderCompanyDetail(v, parts[1]);

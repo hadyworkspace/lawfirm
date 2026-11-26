@@ -7,14 +7,18 @@ function allExpenseCats(){
   return cats;
 }
 function renderAgenda(v){
-  const items = upcomingItems(0);
+  const tab = sessionStorage.getItem('atab')||'الكل';
+  const tabs = ['اليوم','الأسبوع','الكل'];
   const today = todayISO();
-  let html = '<div class="card">';
-  if(!items.length) html += '<div class="empty">لا مواعيد. أضف جلسات من القضايا وتجديدات من الشركات.</div>';
+  let items = upcomingItems(0);
+  if(tab==='اليوم') items = items.filter(i=>i.date===today);
+  else if(tab==='الأسبوع') items = items.filter(i=>i.date>=today && i.date<=plusDays(7));
+  let html = `<div class="tabbing">${tabs.map(t=>`<button class="${t===tab?'on':''}" onclick="sessionStorage.setItem('atab','${t}');route()">${t}</button>`).join('')}</div><div class="card">`;
+  if(!items.length) html += `<div class="empty"><div class="eic">${EMPTY_IC}</div>${tab==='اليوم'?'لا مواعيد اليوم. يومك فارغ.':tab==='الأسبوع'?'لا مواعيد خلال الأسبوع القادم.':'لا مواعيد. أضف جلسات من القضايا وتجديدات من الشركات.'}</div>`;
   let lastDay='';
   items.forEach(i=>{
-    if(i.date!==lastDay){ lastDay=i.date; html += `<div><span class="agenda-day">${fmtDate(i.date)}${i.date<today?' (فائت)':i.date===today?' (اليوم)':''}</span></div>`; }
-    html += `<div class="list-item" onclick="location.hash='${i.ref}'"><div class="t">${esc(i.label)}</div><span class="pill ${i.date<today?'bad':''}">${i.kind}</span></div>`;
+    if(i.date!==lastDay){ lastDay=i.date; html += `<div><span class="agenda-day">${fmtDate(i.date)} · ${relDate(i.date)}</span></div>`; }
+    html += `<div class="list-item" onclick="location.hash='${i.ref}'"><div class="t">${esc(i.label)}</div><span class="pill ${i.date<today?'bad':i.date===today?'warn':''}">${i.kind}</span></div>`;
   });
   v.innerHTML = html + '</div>';
 }
@@ -34,7 +38,7 @@ function renderAccounts(v, mk){
     <b style="color:var(--burgundy);font-size:17px">${mLabel}</b>
     <button class="btn small ghost" onclick="location.hash='#/accounts/${next}'">التالي ›</button>
   </div>
-  <div class="row" style="margin-bottom:10px">
+  <div class="row" style="margin-bottom:12px">
     <span class="muted">انتقل لشهر معين:</span>
     <input type="month" value="${mk}" style="max-width:170px" onchange="if(this.value)location.hash='#/accounts/'+this.value">
   </div>
@@ -43,7 +47,7 @@ function renderAccounts(v, mk){
     <div class="stat bad"><div class="v">${fmtMoney(s.spent)}</div><div class="l">المصروفات</div></div>
     <div class="stat gold"><div class="v">${fmtMoney(s.net)}</div><div class="l">الباقي / الصافي</div></div>
   </div>
-  <div class="card row"><span class="muted">أتعاب مستحقة غير محصلة (إجمالي)</span><b style="color:var(--warn)">${fmtMoney(s.outstanding)}</b></div>
+  <div class="card row" style="margin-top:12px"><span class="muted">أتعاب مستحقة غير محصلة (إجمالي)</span><b style="color:var(--warn)">${fmtMoney(s.outstanding)}</b></div>
   <h3>المصروفات حسب الفئة</h3>
   <div class="card">${cats.map(c=>`<div class="list-item"><span>${esc(c)}</span><b>${fmtMoney(byCat[c])}</b></div>`).join('')}</div>
   <h3>سجل المصروفات</h3>

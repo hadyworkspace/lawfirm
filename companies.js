@@ -16,7 +16,7 @@ function renderCompanies(v){
     return `<div class="list-item" onclick="location.hash='#/companies/${c.id}'">
       <div><div class="t">${esc(c.name)}</div><div class="muted">${esc(c.activity||'')} ${c.legalForm?'· '+esc(c.legalForm):''}</div></div>
       <span class="pill">${done}/${tot} تأسيس</span></div>`;
-  }).join('') : '<div class="empty">لا شركات بعد. اضغط + لإضافة أول شركة.</div>'}</div>
+  }).join('') : `<div class="empty"><div class="eic">${EMPTY_IC}</div>لا شركات بعد.<br>اضغط + لإضافة أول شركة وابدأ ملف التأسيس.</div>`}</div>
   <button class="fab" onclick="addCompany()">+</button>`;
 }
 function addCompany(){
@@ -52,8 +52,12 @@ function renderCompanyDetail(v,id){
     <div class="kv"><b>الشركاء</b>${esc(c.partners||'—')}</div>
     <div class="kv"><b>ملاحظات</b>${esc(c.notes||'—')}</div>
     <div class="btnrow"><button class="btn danger small" onclick="delConfirm('حذف الشركة نهائياً؟',()=>{DB.companies=DB.companies.filter(x=>x.id!=='${id}');save();location.hash='#/companies'})">حذف الشركة</button></div>`;
-  else if(tab==='التأسيس') body = `<div class="section-note">اضغط على الحالة لتغييرها (لم يبدأ ← جاري ← تم)</div>` +
-    c.formationDocs.map((d,i)=>`<div class="list-item" onclick="cycleDoc('${id}',${i})"><span>${esc(d.name)}</span><span class="pill ${docPill(d.status)}">${d.status}</span></div>`).join('');
+  else if(tab==='التأسيس'){
+    const doneN=c.formationDocs.filter(d=>d.status==='تم').length, totN=c.formationDocs.length, pct=totN?Math.round(doneN/totN*100):0;
+    body = `<div class="section-note">اضغط على الحالة لتغييرها (لم يبدأ ← جاري ← تم)</div>
+    <div class="progress"><div style="width:${pct}%"></div></div>
+    <div class="section-note" style="margin-bottom:10px">اكتمل ${doneN.toLocaleString('ar-EG')} من ${totN.toLocaleString('ar-EG')} (${pct.toLocaleString('ar-EG')}%)</div>` +
+    c.formationDocs.map((d,i)=>`<div class="list-item" onclick="cycleDoc('${id}',${i})"><span>${esc(d.name)}</span><span class="pill ${docPill(d.status)}">${d.status}</span></div>`).join(''); }
   else if(tab==='التعديلات') body = (c.amendments.length?c.amendments.map(a=>`<div class="list-item" onclick="cycleAmend('${id}','${a.id}')"><div><div class="t">${esc(a.type)}</div><div class="muted">${fmtDate(a.date)} ${a.notes?'· '+esc(a.notes):''}</div></div><span class="pill ${a.status==='تم'?'ok':a.status==='جاري'?'warn':'bad'}">${a.status}</span></div>`).join(''):'<div class="empty">لا تعديلات مسجلة</div>') +
     `<div class="btnrow"><button class="btn small gold" onclick="addAmend('${id}')">+ تعديل</button></div>`;
   else if(tab==='التجديدات') body = (c.renewals.length?c.renewals.map(r=>`<div class="list-item"><div><div class="t">${esc(r.label)}</div><div class="muted">${fmtDate(r.date)}</div></div><span class="pill ${r.freq==='شهري'?'warn':''}">${r.freq}</span></div>`).join(''):'<div class="empty">لا مواعيد</div>') +
