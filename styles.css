@@ -216,3 +216,4 @@ button,.btn{font-family:'Tajawal',sans-serif;border:none;cursor:pointer;border-r
 #toast{position:fixed;bottom:88px;right:50%;transform:translateX(50%) translateY(16px);background:#3a2c3a;color:#fff;padding:12px 20px;border-radius:14px;font-size:14px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;z-index:9999;max-width:92%;text-align:center;line-height:1.9;box-shadow:0 8px 28px rgba(0,0,0,.3)}
 #toast.show{opacity:1;transform:translateX(50%) translateY(0)}
 #toast.warn{background:#7a1f2b}
+.btn svg{width:16px;height:16px;vertical-align:-3px}
