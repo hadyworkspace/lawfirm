@@ -1,5 +1,5 @@
-const CACHE = 'lawfirm-v9';
-const ASSETS = ['./index.html','./styles.css','./sync.js','./core.js','./auth.js','./home.js','./companies.js','./cases.js','./agenda-accounts.js','./manifest.webmanifest','./logo.png',
+const CACHE = 'lawfirm-v10';
+const ASSETS = ['./index.html','./styles.css','./firebase-config.js','./sync.js','./core.js','./auth.js','./home.js','./companies.js','./cases.js','./agenda-accounts.js','./manifest.webmanifest','./logo.png',
   './fonts/tajawal-400.woff2','./fonts/tajawal-500.woff2','./fonts/tajawal-700.woff2','./fonts/tajawal-800.woff2',
   './fonts/ruqaa-400.woff2','./fonts/ruqaa-700.woff2'];
 self.addEventListener('install', e => {
@@ -11,6 +11,9 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 self.addEventListener('fetch', e => {
+  /* الطلبات الخارجية (Firebase وغيرها) تذهب للشبكة مباشرة دون اعتراض */
+  if(new URL(e.request.url).origin !== self.location.origin) return;
+  if(e.request.method !== 'GET') return;
   /* الصفحات: الشبكة أولاً حتى تصل التحديثات فوراً، مع الرجوع للكاش دون اتصال */
   if(e.request.mode === 'navigate'){
     e.respondWith(fetch(e.request).then(res => {

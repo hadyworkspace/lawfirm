@@ -124,7 +124,8 @@ function manageUsers(){
     <option value="5" ${al==='5'?'selected':''}>بعد ٥ دقائق خمول</option>
     <option value="15" ${al==='15'?'selected':''}>بعد ١٥ دقيقة خمول</option>
   </select>
-  <div class="section-note" style="margin-top:14px;line-height:2">ملاحظة مهمة: بيانات التطبيق محفوظة على هذا الجهاز فقط، وتسجيل الدخول يحمي التطبيق على هذا الجهاز. المستخدمون على أجهزة مختلفة لا تتشارك بياناتهم تلقائياً. المشاركة الفعلية بين الأجهزة تحتاج ربطاً بخادم (مثلاً الخطة المجانية من Firebase أو Supabase)، وهو قرار لاحق لصاحب المكتب.</div>
+  ${window.Sync ? Sync.uiBlock() : ''}
+  <div class="section-note" style="margin-top:14px;line-height:2">ملاحظة: تسجيل الدخول يحمي التطبيق على هذا الجهاز، والمزامنة (عند ربطها أعلاه) تشارك البيانات لحظياً بين أجهزة المكتب المربوطة بنفس الحساب.</div>
   <div class="btnrow"><button class="btn ghost" onclick="closeForm()">إغلاق</button></div>
   </div></div>`;
 }
@@ -145,4 +146,4 @@ function removeUser(name){
   setUsers(getUsers().filter(u=>u.name!==name)); manageUsers();
 }
 
-window.addEventListener('load', ()=>{ renderLock(); startIdleWatch(); });
+window.addEventListener('load', ()=>{ renderLock(); startIdleWatch(); if(window.Sync) Sync.init(); });

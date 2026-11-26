@@ -67,6 +67,7 @@ function renderHome(v){
   const hasData = DB.companies.length || DB.cases.length || DB.expenses.length;
   let lastExp = ''; try{ lastExp = localStorage.getItem('lawfirm_last_export')||''; }catch(e){}
   if(hasData && (!lastExp || lastExp < plusDays(-7))) alertRows.push({cls:'gold',ic:IC.save,t:'تذكير بالنسخ الاحتياطي',s:lastExp?'آخر نسخة: '+fmtDate(lastExp):'لم تصدّر نسخة احتياطية بعد',act:'exportData()'});
+  if(window.Sync && Sync.enabled && Sync.status==='needlink') alertRows.push({cls:'gold',ic:IC.save,t:'المزامنة غير مربوطة على هذا الجهاز',s:'اربط الجهاز من قائمة المستخدمون والأمان لمشاركة البيانات مع باقي الأجهزة',act:'manageUsers()'});
   if(alertRows.length) alerts = `<div class="alerts" style="margin-bottom:14px">${alertRows.map(a=>
     `<div class="alert ${a.cls}" onclick="${a.act||`location.hash='${a.h}'`}"><div class="aic">${a.ic}</div><div style="flex:1"><div class="at">${a.t}</div><div class="as">${esc(a.s)}</div></div></div>`).join('')}</div>`;
 
