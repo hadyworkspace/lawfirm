@@ -75,7 +75,7 @@ function renderHome(v){
   const up = upcomingItems(6);
 
   v.innerHTML = `
-  <div class="greet">${greet}</div>
+  <div class="greet">${greet}${currentUser()?"، "+esc(currentUser()):""}</div>
   <div class="greet-date">${dateStr}</div>
   <div class="banner">
     <div class="bstat"><div class="bv">${todaySessions.length.toLocaleString('ar-EG')}</div><div class="bl">جلسات اليوم</div></div>
@@ -99,6 +99,8 @@ function renderHome(v){
     <button class="btn ghost small" onclick="exportData()">تصدير نسخة احتياطية</button>
     <button class="btn ghost small" onclick="importData()">استيراد نسخة</button>
     <button class="btn ghost small" onclick="seedDemo()">بيانات تجريبية</button>
+    <button class="btn ghost small" onclick="manageUsers()">المستخدمون والأمان</button>
+    <button class="btn ghost small" onclick="lockNow()">قفل التطبيق</button>
   </div>
   <button class="fab" onclick="quickAdd()" aria-label="إضافة سريعة">${IC.plus}</button>`;
 }

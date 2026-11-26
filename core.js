@@ -8,7 +8,7 @@ function load(){
   try{ const d = JSON.parse(localStorage.getItem(DB_KEY)); if(d) return d; }catch(e){}
   return { companies:[], clients:[], cases:[], expenses:[] };
 }
-function save(){ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }
+function save(){ localStorage.setItem(DB_KEY, JSON.stringify(DB)); if(window.Sync) Sync.onSave(); }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function fmtMoney(n){ n = Number(n)||0; return n.toLocaleString('ar-EG') + ' ج.م'; }
