@@ -28,6 +28,10 @@ function upcomingItems(limit){
     (c.sessions||[]).forEach(s=>{
       if(s.nextDate) items.push({date:s.nextDate, kind:'جلسة', label:`${c.number||''} لسنة ${c.year||''} - ${c.court||''}`, ref:'#/cases/'+c.id});
     });
+    (c.poas||[]).forEach(p=>{
+      if(p.expiry) items.push({date:p.expiry, kind:'توكيل', label:`انتهاء توكيل ${p.number||''} - قضية ${c.number||''} لسنة ${c.year||''}`, ref:'#/cases/'+c.id});
+    });
+    (c.errands||[]).forEach(x=>{ if(x.date&&!x.done) items.push({date:x.date,kind:'مأمورية',label:`${x.title} - قضية ${c.number||''} لسنة ${c.year||''}`,ref:'#/cases/'+c.id}); });
   });
   DB.companies.forEach(c=>{
     (c.renewals||[]).forEach(r=>{

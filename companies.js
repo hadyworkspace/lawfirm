@@ -84,7 +84,7 @@ function addCompany(){
 function renderCompanyDetail(v,id){
   const c = findCompany(id); if(!c){ location.hash='#/companies'; return; }
   const tab = sessionStorage.getItem('ctab')||'بيانات';
-  const tabs = ['بيانات','التأسيس','التعديلات','التجديدات','الأتعاب','مأموريات','قضاياها'];
+  const tabs = ['بيانات','التأسيس','التعديلات','التجديدات','الأتعاب','مأموريات','مستندات','قضاياها'];
   let body='';
   if(tab==='بيانات') body = `
     <div class="kv"><b>النشاط</b>${esc(c.activity||'—')}</div>
@@ -111,6 +111,8 @@ function renderCompanyDetail(v,id){
     `<div class="btnrow"><button class="btn small gold" onclick="addPayment('company','${id}')">+ دفعة</button></div>`; }
   else if(tab==='مأموريات') body = (c.errands.length?c.errands.map(x=>`<div class="list-item" onclick="toggleErrand('${id}','${x.id}')"><div><div class="t" style="${x.done?'text-decoration:line-through;opacity:.6':''}">${esc(x.title)}</div><div class="muted">${fmtDate(x.date)}</div></div><span class="pill ${x.done?'ok':'grey'}">${x.done?'تم':'معلقة'}</span></div>`).join(''):'<div class="empty">لا مأموريات</div>') +
     `<div class="btnrow"><button class="btn small gold" onclick="addErrand('${id}')">+ مأمورية</button></div>`;
+  else if(tab==='مستندات') body = ((c.docs||[]).length?c.docs.map(dd=>`<div class="list-item" onclick="delConfirm('حذف المستند؟',()=>delDoc('company','${id}','${dd.id}'))"><div><div class="t">${esc(dd.name)}</div><div class="muted">${fmtDate(dd.date)}${dd.notes?' · '+esc(dd.notes):''}</div></div></div>`).join(''):'<div class="empty">لا مستندات مسجلة.<br>سجّل أوراق ملف الشركة هنا (عقود، مستخرجات، تراخيص...) لتبقى في مكان واحد.</div>') +
+    `<div class="btnrow"><button class="btn small gold" onclick="addDoc('company','${id}')">+ مستند</button></div>`;
   else body = (DB.cases.filter(x=>x.companyId===id).map(x=>`<div class="list-item" onclick="location.hash='#/cases/${x.id}'"><div><div class="t">قضية ${x.number} لسنة ${x.year}</div><div class="muted">${esc(x.court||'')}</div></div><span class="pill">${esc(x.status||'')}</span></div>`).join('')||'<div class="empty">لا قضايا مربوطة بهذه الشركة</div>');
   v.innerHTML = `<h2>${esc(c.name)}</h2>
   <div class="tabbing">${tabs.map(t=>`<button class="${t===tab?'on':''}" onclick="sessionStorage.setItem('ctab','${t}');route()">${t}</button>`).join('')}</div>
@@ -143,3 +145,14 @@ function addErrand(cid){ openForm('مأمورية',[
     {key:'date',label:'التاريخ',type:'date'}
   ], d=>{ findCompany(cid).errands.push({id:uid(),done:false,...d}); save(); route(); }); }
 function toggleErrand(cid,eid){ const x=findCompany(cid).errands.find(e=>e.id===eid); x.done=!x.done; save(); route(); }
+function addCaseErrand(cid){ openForm('مأمورية',[
+    {key:'title',label:'المأمورية',type:'combo',options:ERRAND_TYPES},
+    {key:'date',label:'التاريخ',type:'date'}
+  ], d=>{ const c=findCase(cid); (c.errands=c.errands||[]).push({id:uid(),done:false,...d}); save(); route(); }); }
+function toggleCaseErrand(cid,eid){ const c=findCase(cid); const x=(c.errands||[]).find(e=>e.id===eid); if(x){ x.done=!x.done; save(); route(); } }
+function addDoc(kind,id){ openForm('مستند',[
+    {key:'name',label:'اسم المستند',required:1},
+    {key:'date',label:'التاريخ',type:'date'},
+    {key:'notes',label:'ملاحظات',type:'textarea'}
+  ], d=>{ const o = kind==='company'?findCompany(id):findCase(id); (o.docs=o.docs||[]).push({id:uid(),...d}); save(); route(); }); }
+function delDoc(kind,id,did){ const o = kind==='company'?findCompany(id):findCase(id); o.docs=(o.docs||[]).filter(d=>d.id!==did); save(); route(); }

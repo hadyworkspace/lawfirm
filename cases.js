@@ -17,14 +17,87 @@ function clientFees(cid){
 }
 
 function renderCases(v){
-  v.innerHTML = `<div class="card">${DB.cases.length ? DB.cases.map(c=>{
-    const next=(c.sessions||[]).map(s=>s.nextDate).filter(Boolean).sort()[0];
-    return `<div class="list-item" onclick="location.hash='#/cases/${c.id}'">
-      <div><div class="t">قضية ${esc(c.number||'')} لسنة ${esc(c.year||'')}</div>
-      <div class="muted">${esc(c.court||'')} ${c.circuit?'· '+esc(c.circuit):''} · ${esc(clientName(c.clientId))}</div></div>
-      ${next?`<span class="pill warn">${relDate(next)}</span>`:`<span class="pill">${esc(c.status||'')}</span>`}</div>`;
-  }).join('') : `<div class="empty"><div class="eic">${EMPTY_IC}</div>لا قضايا بعد.<br>اضغط + لإضافة أول قضية.</div>`}</div>
+  const tab = sessionStorage.getItem('caselistab')||'القضايا';
+  let body='';
+  if(tab==='القضايا'){
+    body = DB.cases.length ? DB.cases.map(c=>{
+      const next=(c.sessions||[]).map(s=>s.nextDate).filter(Boolean).sort()[0];
+      return `<div class="list-item" onclick="location.hash='#/cases/${c.id}'">
+        <div><div class="t">قضية ${esc(c.number||'')} لسنة ${esc(c.year||'')}</div>
+        <div class="muted">${esc(c.court||'')} ${c.circuit?'· '+esc(c.circuit):''} · ${esc(clientName(c.clientId))}</div></div>
+        ${next?`<span class="pill warn">${relDate(next)}</span>`:`<span class="pill">${esc(c.status||'')}</span>`}</div>`;
+    }).join('') : `<div class="empty"><div class="eic">${EMPTY_IC}</div>لا قضايا بعد.<br>اضغط + لإضافة أول قضية.</div>`;
+  } else if(tab==='المحضرين'){
+    const all=[]; DB.cases.forEach(c=>(c.adminWorks||[]).forEach(a=>all.push({c,a})));
+    all.sort((x,y)=>(y.a.deliveryDate||'').localeCompare(x.a.deliveryDate||''));
+    body = (all.length? all.map(x=>`<div class="list-item" onclick="location.hash='#/cases/${x.c.id}'">
+        <div><div class="t">إعلان رقم ${esc(x.a.announcementNo)}${x.a.announcementType?' · '+esc(x.a.announcementType):''}</div>
+        <div class="muted">قضية ${esc(x.c.number)} لسنة ${esc(x.c.year)}${x.a.bailiffOffice?' · '+esc(x.a.bailiffOffice):''}</div>
+        <div class="muted">تسليم: ${fmtDate(x.a.deliveryDate)} · استلام: ${x.a.receiptDate?fmtDate(x.a.receiptDate):'لم يستلم'}</div></div>
+        <span class="pill ${x.a.receiptDate?'ok':'warn'}">${x.a.receiptDate?'تم الاستلام':'لم يستلم'}</span></div>`).join('')
+      : `<div class="empty"><div class="eic">${EMPTY_IC}</div>لا أعمال محضرين بعد.<br>سجّل الإعلانات برقمها وقلم المحضرين ويوم التسليم والاستلام.</div>`) +
+      `<div class="btnrow"><button class="btn small gold" onclick="addAdminWorkGlobal()">+ إضافة إعلان</button></div>`;
+  } else {
+    body = (DB.clients.length? DB.clients.map(cl=>{ const kases=DB.cases.filter(x=>x.clientId===cl.id); const f=clientFees(cl.id);
+      return `<div class="list-item" onclick="location.hash='#/clients/${cl.id}'">
+        <div><div class="t">${esc(cl.name)}</div><div class="muted">${cl.phone?esc(cl.phone)+' · ':''}${kases.length.toLocaleString('ar-EG')} قضية</div></div>
+        ${f.left>0?`<span class="pill bad">${fmtMoney(f.left)}</span>`:`<span class="pill ok">سدد بالكامل</span>`}</div>`;}).join('')
+      : `<div class="empty"><div class="eic">${EMPTY_IC}</div>لا موكلين بعد.<br>يُضاف الموكل تلقائياً مع أول قضية، أو اضغط + موكل.</div>`) +
+      `<div class="btnrow"><button class="btn small gold" onclick="addClientForm()">+ موكل</button></div>`;
+  }
+  const totalAdmin = DB.cases.reduce((s,c)=>s+(c.adminWorks||[]).length,0);
+  v.innerHTML = `<div class="tabbing">
+    <button class="${tab==='القضايا'?'on':''}" onclick="sessionStorage.setItem('caselistab','القضايا');route()">القضايا</button>
+    <button class="${tab==='المحضرين'?'on':''}" onclick="sessionStorage.setItem('caselistab','المحضرين');route()">المحضرين (${totalAdmin.toLocaleString('ar-EG')})</button>
+    <button class="${tab==='الموكلين'?'on':''}" onclick="sessionStorage.setItem('caselistab','الموكلين');route()">الموكلين (${DB.clients.length.toLocaleString('ar-EG')})</button></div>
+  <div class="card" style="padding:10px 12px">${body}</div>
   <button class="fab" onclick="addCase()">+</button>`;
+}
+function addAdminWorkGlobal(){
+  if(!DB.cases.length){ alert('أضف قضية أولاً'); return; }
+  openForm('إعلان / عمل محضرين',[
+    {key:'caseId',label:'القضية',type:'select',options:DB.cases.map(c=>({v:c.id,t:'قضية '+c.number+' لسنة '+c.year}))},
+    {key:'announcementNo',label:'رقم الإعلان',required:1},
+    {key:'announcementType',label:'نوع الإعلان',type:'combo',options:ANNOUNCEMENT_TYPES},
+    {key:'deliveryDate',label:'يوم التسليم للمحضر',type:'date'},
+    {key:'receiptDate',label:'يوم الاستلام',type:'date',optional:1},
+    {key:'bailiffOffice',label:'تبع أنهي قلم محضرين',type:'combo',options:BAILIFF_OFFICES}
+  ], d=>{ const c=findCase(d.caseId); delete d.caseId; (c.adminWorks=c.adminWorks||[]).push({id:uid(),...d}); save(); route(); });
+}
+function addClientForm(){ openForm('موكل جديد',[
+    {key:'name',label:'اسم الموكل',required:1},
+    {key:'phone',label:'الموبايل',type:'tel'},
+    {key:'nationalId',label:'الرقم القومي'},
+    {key:'companyId',label:'تابع لشركة',type:'select',options:[{v:'',t:'— بدون شركة —'},...DB.companies.map(c=>({v:c.id,t:c.name}))]}
+  ], d=>{ DB.clients.push({id:uid(),...d}); save(); route(); }); }
+function editClient(id){ const cl=findClient(id); openForm('تعديل بيانات الموكل',[
+    {key:'name',label:'اسم الموكل',required:1},
+    {key:'phone',label:'الموبايل',type:'tel'},
+    {key:'nationalId',label:'الرقم القومي'},
+    {key:'companyId',label:'تابع لشركة',type:'select',options:[{v:'',t:'— بدون شركة —'},...DB.companies.map(c=>({v:c.id,t:c.name}))]}
+  ], d=>{ Object.assign(cl,d); save(); route(); }, cl); }
+function renderClientDetail(v,id){
+  const cl=findClient(id); if(!cl){ location.hash='#/cases'; return; }
+  const kases=DB.cases.filter(x=>x.clientId===id);
+  const f=clientFees(id);
+  const co=cl.companyId?findCompany(cl.companyId):null;
+  const phoneBlock = cl.phone ? `${esc(cl.phone)} <span class="btnrow" style="display:inline-flex;margin:0 6px;gap:6px">
+    <a class="btn small gold" href="${telLink(cl.phone)}" style="padding:5px 10px">${PHONE_IC} اتصال</a>
+    <a class="btn small ghost" href="${waLink(cl.phone)}" target="_blank" rel="noopener" style="padding:5px 10px">${WA_IC} واتساب</a></span>` : '—';
+  v.innerHTML = `<h2>${esc(cl.name)}</h2>
+  <div class="card">
+    <div class="kv"><b>الموبايل</b>${phoneBlock}</div>
+    <div class="kv"><b>الرقم القومي</b>${esc(cl.nationalId||'—')}</div>
+    ${co?`<div class="kv"><b>الشركة</b><a href="#/companies/${co.id}" style="color:var(--burgundy);font-weight:700">${esc(co.name)}</a></div>`:''}
+    <div class="section-note" style="margin-top:10px">أتعاب الموكل في كل القضايا</div>
+    <div class="grid3"><div class="stat"><div class="v">${fmtMoney(f.agreed)}</div><div class="l">المتفق عليه</div></div>
+    <div class="stat ok"><div class="v">${fmtMoney(f.paid)}</div><div class="l">المحصّل</div></div>
+    <div class="stat bad"><div class="v">${fmtMoney(f.left)}</div><div class="l">المتبقي</div></div></div>
+    <div class="btnrow"><button class="btn small gold" onclick="editClient('${id}')">تعديل البيانات</button>
+    ${kases.length?'':`<button class="btn danger small" onclick="delConfirm('حذف الموكل نهائياً؟',()=>{DB.clients=DB.clients.filter(x=>x.id!=='${id}');save();location.hash='#/cases'})">حذف الموكل</button>`}</div>
+  </div>
+  <h2 style="font-size:20px">قضاياه</h2>
+  <div class="card">${kases.length?kases.map(x=>`<div class="list-item" onclick="location.hash='#/cases/${x.id}'"><div><div class="t">قضية ${esc(x.number)} لسنة ${esc(x.year)}</div><div class="muted">${esc(x.court||'')}</div></div><span class="pill">${esc(x.status||'')}</span></div>`).join(''):'<div class="empty">لا قضايا لهذا الموكل بعد</div>'}</div>`;
 }
 function addCase(){
   const clientOpts = DB.clients.map(c=>c.name);
@@ -46,14 +119,15 @@ function addCase(){
     const company = client && client.companyId ? client.companyId : '';
     DB.cases.push({ id:uid(), number:d.number, year:d.year, court:d.court, circuit:d.circuit, type:d.type,
       opponents:d.opponents, status:d.status||'متداولة', clientId:client?client.id:'', companyId:company, notes:d.notes,
-      feesAgreed:d.feesAgreed, sessions:[], poas:[], adminWorks:[], payments:[] });
+      feesAgreed:d.feesAgreed, sessions:[], poas:[], adminWorks:[], payments:[], errands:[], docs:[] });
     save(); route();
   });
 }
 function renderCaseDetail(v,id){
   const c = findCase(id); if(!c){ location.hash='#/cases'; return; }
-  const tab = sessionStorage.getItem('ktab')||'بيانات';
-  const tabs = ['بيانات','الجلسات','التوكيلات','المحضرين','الأتعاب','السجل الزمني'];
+  let tab = sessionStorage.getItem('ktab')||'بيانات';
+  if(tab==='المحضرين') tab='المحضرين والأعمال الإدارية';
+  const tabs = ['بيانات','الجلسات','التوكيلات','المحضرين والأعمال الإدارية','مأموريات','مستندات','الأتعاب','السجل الزمني'];
   let body='';
   if(tab==='بيانات'){
     const co=c.companyId?findCompany(c.companyId):null;
@@ -88,8 +162,12 @@ function renderCaseDetail(v,id){
     `<div class="btnrow"><button class="btn small gold" onclick="addSession('${id}')">+ جلسة</button></div>`;
   else if(tab==='التوكيلات') body = (c.poas.length?c.poas.map(p=>`<div class="list-item"><div><div class="t">توكيل ${esc(p.number)} لسنة ${esc(p.year)}</div><div class="muted">${esc(p.office||'')}</div></div>${p.expiry?`<span class="pill bad">${fmtDate(p.expiry)}</span>`:''}</div>`).join(''):'<div class="empty">لا توكيلات</div>') +
     `<div class="btnrow"><button class="btn small gold" onclick="addPoa('${id}')">+ توكيل</button></div>`;
-  else if(tab==='المحضرين') body = (c.adminWorks.length?c.adminWorks.map(a=>`<div class="list-item"><div><div class="t">إعلان رقم ${esc(a.announcementNo)}${a.announcementType?' · '+esc(a.announcementType):''}</div><div class="muted">تسليم: ${fmtDate(a.deliveryDate)} · استلام: ${a.receiptDate?fmtDate(a.receiptDate):'لم يستلم'}</div></div><span class="pill">${esc(a.bailiffOffice||'')}</span></div>`).join(''):'<div class="empty">لا أعمال محضرين</div>') +
+  else if(tab==='المحضرين والأعمال الإدارية') body = ((c.adminWorks||[]).length?c.adminWorks.map(a=>`<div class="list-item"><div><div class="t">إعلان رقم ${esc(a.announcementNo)}${a.announcementType?' · '+esc(a.announcementType):''}</div><div class="muted">تسليم: ${fmtDate(a.deliveryDate)} · استلام: ${a.receiptDate?fmtDate(a.receiptDate):'لم يستلم'}</div></div><span class="pill">${esc(a.bailiffOffice||'')}</span></div>`).join(''):'<div class="empty">لا أعمال محضرين</div>') +
     `<div class="btnrow"><button class="btn small gold" onclick="addAdminWork('${id}')">+ إعلان</button></div>`;
+  else if(tab==='مأموريات') body = ((c.errands||[]).length?c.errands.map(x=>`<div class="list-item" onclick="toggleCaseErrand('${id}','${x.id}')"><div><div class="t" style="${x.done?'text-decoration:line-through;opacity:.6':''}">${esc(x.title)}</div><div class="muted">${fmtDate(x.date)}</div></div><span class="pill ${x.done?'ok':'grey'}">${x.done?'تم':'معلقة'}</span></div>`).join(''):'<div class="empty">لا مأموريات</div>') +
+    `<div class="btnrow"><button class="btn small gold" onclick="addCaseErrand('${id}')">+ مأمورية</button></div>`;
+  else if(tab==='مستندات') body = ((c.docs||[]).length?c.docs.map(dd=>`<div class="list-item" onclick="delConfirm('حذف المستند؟',()=>delDoc('case','${id}','${dd.id}'))"><div><div class="t">${esc(dd.name)}</div><div class="muted">${fmtDate(dd.date)}${dd.notes?' · '+esc(dd.notes):''}</div></div></div>`).join(''):'<div class="empty">لا مستندات مسجلة.<br>سجّل أوراق الملف هنا (عقود، صحف، أحكام...) لتبقى في مكان واحد.</div>') +
+    `<div class="btnrow"><button class="btn small gold" onclick="addDoc('case','${id}')">+ مستند</button></div>`;
   else if(tab==='الأتعاب'){ const paid=(c.payments||[]).reduce((s,p)=>s+(Number(p.amount)||0),0);
     body = `<div class="grid3"><div class="stat"><div class="v">${fmtMoney(c.feesAgreed||0)}</div><div class="l">المتفق عليه</div></div><div class="stat ok"><div class="v">${fmtMoney(paid)}</div><div class="l">المدفوع</div></div><div class="stat bad"><div class="v">${fmtMoney((c.feesAgreed||0)-paid)}</div><div class="l">الباقي</div></div></div>` +
     (c.payments||[]).map(p=>`<div class="list-item"><span>${fmtDate(p.date)}${p.method?' · '+esc(p.method):''}${p.note?' · '+esc(p.note):''}</span><b>${fmtMoney(p.amount)}</b></div>`).join('') +

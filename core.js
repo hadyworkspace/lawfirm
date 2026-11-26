@@ -137,12 +137,12 @@ function importData(){
 }
 
 /* التنقل */
-const TITLES = { home:'الرئيسية', companies:'الشركات', cases:'القضايا', agenda:'الأجندة', accounts:'الحسابات الشهرية' };
+const TITLES = { home:'الرئيسية', companies:'الشركات', cases:'القضايا', clients:'الموكلين', agenda:'الأجندة', accounts:'الحسابات الشهرية' };
 function route(){
   const h = location.hash || '#/home';
   const parts = h.slice(2).split('/');
   const page = parts[0] || 'home';
-  document.querySelectorAll('#bottomnav a').forEach(a=>a.classList.toggle('active', a.dataset.nav===page));
+  document.querySelectorAll('#bottomnav a').forEach(a=>a.classList.toggle('active', a.dataset.nav===(page==='clients'?'cases':page)));
   document.getElementById('pageHeading').textContent = page==='home' ? '' : (TITLES[page] || '');
   const v = document.getElementById('view');
   window.scrollTo(0,0);
@@ -150,6 +150,8 @@ function route(){
   else if(page==='companies') renderCompanies(v);
   else if(page==='cases' && parts[1]) renderCaseDetail(v, parts[1]);
   else if(page==='cases') renderCases(v);
+  else if(page==='clients' && parts[1]) renderClientDetail(v, parts[1]);
+  else if(page==='clients'){ sessionStorage.setItem('caselistab','الموكلين'); location.hash='#/cases'; return; }
   else if(page==='agenda') renderAgenda(v);
   else if(page==='accounts') renderAccounts(v, parts[1]);
   else renderHome(v);
