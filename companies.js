@@ -3,7 +3,7 @@ const FORMATION_DOCS = ['عقد التأسيس وتوثيقه','السجل ال�
 const DOC_STATUSES = ['لم يبدأ','جاري','تم','يحتاج تجديد'];
 const ACTIVITIES = ['تجارة عامة','مقاولات وتشييد','عقارات','استيراد وتصدير','صناعة','خدمات','تكنولوجيا معلومات','أغذية ومشروبات','مطاعم','زراعة','نقل ولوجستيات'];
 const LEGAL_FORMS = ['منشأة فردية','شركة تضامن','شركة توصية بسيطة','شركة ذات مسئولية محدودة (ذ.م.م)','شركة مساهمة مصرية (ش.م.م)','شركة توصية بالأسهم','شركة أوف شور','فرع شركة أجنبية'];
-const AMEND_TYPES = ['تعديل رأس المال','تعديل الشركاء','تعديل المقر / العنوان','تعديل النشاط','تغيير مدير الشركة','تعديل اسم الشركة','تعديل النظام الأساسي'];
+const AMEND_TYPES = ['جمعية عادية','جمعية غير عادية','قرار إداري','مجلس إدارة','تعديل منشأة فردية'];
 const RENEWAL_TYPES = ['إقرار القيمة المضافة','التأمينات الاجتماعية','إقرار ضريبة الدخل','كسب العمل','تجديد السجل التجاري','تجديد البطاقة الضريبية','تجديد الرخصة','تجديد السجل الصناعي','تجديد التوقيع الإلكتروني'];
 const ERRAND_TYPES = ['تقديم صحيفة','متابعة توثيق عقد','استلام مستندات','سداد رسوم','استخراج مستخرج رسمي','تسليم إقرارات','تصوير ملف'];
 const PAY_METHODS = ['نقدي','تحويل بنكي','إنستاباي','فودافون كاش','شيك'];
@@ -13,15 +13,17 @@ function docPill(s){ return s==='تم'?'ok':(s==='جاري'?'warn':(s==='يحت�
 function renderCompanies(v){
   v.innerHTML = `<div class="card">${DB.companies.length ? DB.companies.map(c=>{
     const done=(c.formationDocs||[]).filter(d=>d.status==='تم').length, tot=(c.formationDocs||[]).length;
+    const pillTxt = tot>0 ? `${done}/${tot} تأسيس` : `${(c.amendments||[]).length.toLocaleString('ar-EG')} تعديل`;
     return `<div class="list-item" onclick="location.hash='#/companies/${c.id}'">
       <div><div class="t">${esc(c.name)}</div><div class="muted">${esc(c.activity||'')} ${c.legalForm?'· '+esc(c.legalForm):''}</div></div>
-      <span class="pill">${done}/${tot} تأسيس</span></div>`;
+      <span class="pill">${pillTxt}</span></div>`;
   }).join('') : `<div class="empty"><div class="eic">${EMPTY_IC}</div>لا شركات بعد.<br>اضغط + لإضافة أول شركة وابدأ ملف التأسيس.</div>`}</div>
   <button class="fab" onclick="addCompany()">+</button>`;
 }
 function addCompany(){
   openForm('شركة جديدة',[
     {key:'name',label:'اسم الشركة',required:1},
+    {key:'established',label:'حالة الملف',type:'select',options:['تأسيس جديد عن طريق المكتب','شركة قائمة بالفعل (تعديلات فقط)']},
     {key:'activity',label:'النشاط',type:'combo',options:ACTIVITIES},
     {key:'legalForm',label:'الشكل القانوني',type:'combo',options:LEGAL_FORMS},
     {key:'capital',label:'رأس المال',type:'number'},
@@ -30,8 +32,9 @@ function addCompany(){
     {key:'feesAgreed',label:'الأتعاب المتفق عليها',type:'number'},
     {key:'notes',label:'ملاحظات',type:'textarea'}
   ], d=>{
+    const est = d.established==='شركة قائمة بالفعل (تعديلات فقط)';
     DB.companies.push({ id:uid(), ...d,
-      formationDocs:FORMATION_DOCS.map(n=>({name:n,status:'لم يبدأ'})),
+      formationDocs: est ? [] : FORMATION_DOCS.map(n=>({name:n,status:'لم يبدأ'})),
       amendments:[], renewals:[
         {id:uid(),label:'إقرار القيمة المضافة',date:todayISO(),freq:'شهري'},
         {id:uid(),label:'التأمينات الاجتماعية',date:todayISO(),freq:'شهري'}
@@ -52,13 +55,14 @@ function renderCompanyDetail(v,id){
     <div class="kv"><b>الشركاء</b>${esc(c.partners||'—')}</div>
     <div class="kv"><b>ملاحظات</b>${esc(c.notes||'—')}</div>
     <div class="btnrow"><button class="btn danger small" onclick="delConfirm('حذف الشركة نهائياً؟',()=>{DB.companies=DB.companies.filter(x=>x.id!=='${id}');save();location.hash='#/companies'})">حذف الشركة</button></div>`;
+  else if(tab==='التأسيس' && !c.formationDocs.length) body = `<div class="empty"><div class="eic">${EMPTY_IC}</div>هذه الشركة قائمة بالفعل ولم تُؤسَّس عن طريق المكتب،<br>فلا مستندات تأسيس لها. سجّل الشغل عليها من قسم التعديلات.</div>`;
   else if(tab==='التأسيس'){
     const doneN=c.formationDocs.filter(d=>d.status==='تم').length, totN=c.formationDocs.length, pct=totN?Math.round(doneN/totN*100):0;
     body = `<div class="section-note">اضغط على الحالة لتغييرها (لم يبدأ ← جاري ← تم)</div>
     <div class="progress"><div style="width:${pct}%"></div></div>
     <div class="section-note" style="margin-bottom:10px">اكتمل ${doneN.toLocaleString('ar-EG')} من ${totN.toLocaleString('ar-EG')} (${pct.toLocaleString('ar-EG')}%)</div>` +
     c.formationDocs.map((d,i)=>`<div class="list-item" onclick="cycleDoc('${id}',${i})"><span>${esc(d.name)}</span><span class="pill ${docPill(d.status)}">${d.status}</span></div>`).join(''); }
-  else if(tab==='التعديلات') body = (c.amendments.length?c.amendments.map(a=>`<div class="list-item" onclick="cycleAmend('${id}','${a.id}')"><div><div class="t">${esc(a.type)}</div><div class="muted">${fmtDate(a.date)} ${a.notes?'· '+esc(a.notes):''}</div></div><span class="pill ${a.status==='تم'?'ok':a.status==='جاري'?'warn':'bad'}">${a.status}</span></div>`).join(''):'<div class="empty">لا تعديلات مسجلة</div>') +
+  else if(tab==='التعديلات') body = (c.amendments.length?c.amendments.map(a=>`<div class="list-item" onclick="cycleAmend('${id}','${a.id}')"><div><div class="t">${esc(a.type)}</div><div class="muted">${fmtDate(a.date)}${a.fees?' · أتعاب: '+fmtMoney(a.fees):''}${a.notes?' · '+esc(a.notes):''}</div></div><span class="pill ${a.status==='تم'?'ok':a.status==='جاري'?'warn':'bad'}">${a.status}</span></div>`).join(''):'<div class="empty">لا تعديلات مسجلة</div>') +
     `<div class="btnrow"><button class="btn small gold" onclick="addAmend('${id}')">+ تعديل</button></div>`;
   else if(tab==='التجديدات') body = (c.renewals.length?c.renewals.map(r=>`<div class="list-item"><div><div class="t">${esc(r.label)}</div><div class="muted">${fmtDate(r.date)}</div></div><span class="pill ${r.freq==='شهري'?'warn':''}">${r.freq}</span></div>`).join(''):'<div class="empty">لا مواعيد</div>') +
     `<div class="btnrow"><button class="btn small gold" onclick="addRenewal('${id}')">+ موعد</button></div>`;
@@ -79,6 +83,7 @@ function addAmend(cid){ openForm('تعديل جديد',[
     {key:'type',label:'نوع التعديل',type:'combo',options:AMEND_TYPES},
     {key:'date',label:'التاريخ',type:'date'},
     {key:'status',label:'الحالة',type:'select',options:['مطلوب','جاري','تم']},
+    {key:'fees',label:'أتعاب التعديل',type:'number'},
     {key:'notes',label:'ملاحظات',type:'textarea'}
   ], d=>{ findCompany(cid).amendments.push({id:uid(),...d}); save(); route(); }); }
 function cycleAmend(cid,aid){ const a=findCompany(cid).amendments.find(x=>x.id===aid);
