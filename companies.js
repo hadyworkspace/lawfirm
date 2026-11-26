@@ -1,6 +1,13 @@
 /* قسم الشركات */
 const FORMATION_DOCS = ['عقد التأسيس وتوثيقه','السجل التجاري','البطاقة الضريبية','ملف القيمة المضافة','التأمينات الاجتماعية','صحيفة الاستثمار','الرخصة','السجل الصناعي','التوقيع الإلكتروني'];
 const DOC_STATUSES = ['لم يبدأ','جاري','تم','يحتاج تجديد'];
+const ACTIVITIES = ['تجارة عامة','مقاولات وتشييد','عقارات','استيراد وتصدير','صناعة','خدمات','تكنولوجيا معلومات','أغذية ومشروبات','مطاعم','زراعة','نقل ولوجستيات'];
+const LEGAL_FORMS = ['منشأة فردية','شركة تضامن','شركة توصية بسيطة','شركة ذات مسئولية محدودة (ذ.م.م)','شركة مساهمة مصرية (ش.م.م)','شركة توصية بالأسهم','شركة أوف شور','فرع شركة أجنبية'];
+const AMEND_TYPES = ['تعديل رأس المال','تعديل الشركاء','تعديل المقر / العنوان','تعديل النشاط','تغيير مدير الشركة','تعديل اسم الشركة','تعديل النظام الأساسي'];
+const RENEWAL_TYPES = ['إقرار القيمة المضافة','التأمينات الاجتماعية','إقرار ضريبة الدخل','كسب العمل','تجديد السجل التجاري','تجديد البطاقة الضريبية','تجديد الرخصة','تجديد السجل الصناعي','تجديد التوقيع الإلكتروني'];
+const ERRAND_TYPES = ['تقديم صحيفة','متابعة توثيق عقد','استلام مستندات','سداد رسوم','استخراج مستخرج رسمي','تسليم إقرارات','تصوير ملف'];
+const PAY_METHODS = ['نقدي','تحويل بنكي','إنستاباي','فودافون كاش','شيك'];
+const PAY_NOTES = ['مقدم أتعاب','دفعة أولى','دفعة تحت الحساب','دفعة أخيرة','تسوية كاملة'];
 function docPill(s){ return s==='تم'?'ok':(s==='جاري'?'warn':(s==='يحتاج تجديد'?'bad':'grey')); }
 
 function renderCompanies(v){
@@ -14,10 +21,13 @@ function renderCompanies(v){
 }
 function addCompany(){
   openForm('شركة جديدة',[
-    {key:'name',label:'اسم الشركة',required:1},{key:'activity',label:'النشاط'},
-    {key:'legalForm',label:'الشكل القانوني',type:'select',options:['فردية','أشخاص (تضامن/توصية)','أموال (ذات مسئولية محدودة)','مساهمة','أخرى']},
-    {key:'capital',label:'رأس المال',type:'number'},{key:'address',label:'المقر'},
-    {key:'partners',label:'الشركاء / المؤسسين'},{key:'feesAgreed',label:'الأتعاب المتفق عليها',type:'number'},
+    {key:'name',label:'اسم الشركة',required:1},
+    {key:'activity',label:'النشاط',type:'combo',options:ACTIVITIES},
+    {key:'legalForm',label:'الشكل القانوني',type:'combo',options:LEGAL_FORMS},
+    {key:'capital',label:'رأس المال',type:'number'},
+    {key:'address',label:'المقر'},
+    {key:'partners',label:'الشركاء / المؤسسين'},
+    {key:'feesAgreed',label:'الأتعاب المتفق عليها',type:'number'},
     {key:'notes',label:'ملاحظات',type:'textarea'}
   ], d=>{
     DB.companies.push({ id:uid(), ...d,
@@ -50,7 +60,7 @@ function renderCompanyDetail(v,id){
     `<div class="btnrow"><button class="btn small gold" onclick="addRenewal('${id}')">+ موعد</button></div>`;
   else if(tab==='الأتعاب'){ const paid=(c.payments||[]).reduce((s,p)=>s+(Number(p.amount)||0),0);
     body = `<div class="grid3"><div class="stat"><div class="v">${fmtMoney(c.feesAgreed||0)}</div><div class="l">المتفق عليه</div></div><div class="stat ok"><div class="v">${fmtMoney(paid)}</div><div class="l">المدفوع</div></div><div class="stat bad"><div class="v">${fmtMoney((c.feesAgreed||0)-paid)}</div><div class="l">الباقي</div></div></div>` +
-    (c.payments||[]).map(p=>`<div class="list-item"><span>${fmtDate(p.date)} ${p.note?'· '+esc(p.note):''}</span><b>${fmtMoney(p.amount)}</b></div>`).join('') +
+    (c.payments||[]).map(p=>`<div class="list-item"><span>${fmtDate(p.date)}${p.method?' · '+esc(p.method):''}${p.note?' · '+esc(p.note):''}</span><b>${fmtMoney(p.amount)}</b></div>`).join('') +
     `<div class="btnrow"><button class="btn small gold" onclick="addPayment('company','${id}')">+ دفعة</button></div>`; }
   else if(tab==='مأموريات') body = (c.errands.length?c.errands.map(x=>`<div class="list-item" onclick="toggleErrand('${id}','${x.id}')"><div><div class="t" style="${x.done?'text-decoration:line-through;opacity:.6':''}">${esc(x.title)}</div><div class="muted">${fmtDate(x.date)}</div></div><span class="pill ${x.done?'ok':'grey'}">${x.done?'تم':'معلقة'}</span></div>`).join(''):'<div class="empty">لا مأموريات</div>') +
     `<div class="btnrow"><button class="btn small gold" onclick="addErrand('${id}')">+ مأمورية</button></div>`;
@@ -62,20 +72,26 @@ function renderCompanyDetail(v,id){
 function cycleDoc(cid,i){ const c=findCompany(cid); const d=c.formationDocs[i];
   const order=['لم يبدأ','جاري','تم']; d.status = order[(order.indexOf(d.status)+1)%3]; save(); route(); }
 function addAmend(cid){ openForm('تعديل جديد',[
-    {key:'type',label:'نوع التعديل',type:'select',options:['تعديل رأس المال','تعديل الشركاء','تعديل العنوان','تعديل النشاط','أخرى']},
-    {key:'date',label:'التاريخ',type:'date'},{key:'status',label:'الحالة',type:'select',options:['مطلوب','جاري','تم']},
+    {key:'type',label:'نوع التعديل',type:'combo',options:AMEND_TYPES},
+    {key:'date',label:'التاريخ',type:'date'},
+    {key:'status',label:'الحالة',type:'select',options:['مطلوب','جاري','تم']},
     {key:'notes',label:'ملاحظات',type:'textarea'}
   ], d=>{ findCompany(cid).amendments.push({id:uid(),...d}); save(); route(); }); }
 function cycleAmend(cid,aid){ const a=findCompany(cid).amendments.find(x=>x.id===aid);
   const order=['مطلوب','جاري','تم']; a.status=order[(order.indexOf(a.status)+1)%3]; save(); route(); }
 function addRenewal(cid){ openForm('موعد / تجديد',[
-    {key:'label',label:'البند'},{key:'date',label:'التاريخ',type:'date'},
+    {key:'label',label:'البند',type:'combo',options:RENEWAL_TYPES},
+    {key:'date',label:'التاريخ',type:'date'},
     {key:'freq',label:'التكرار',type:'select',options:['شهري','سنوي','مرة واحدة']}
   ], d=>{ findCompany(cid).renewals.push({id:uid(),...d}); save(); route(); }); }
 function addPayment(kind,id){ openForm('دفعة جديدة',[
-    {key:'amount',label:'المبلغ',type:'number',required:1},{key:'date',label:'التاريخ',type:'date'},{key:'note',label:'بيان'}
+    {key:'amount',label:'المبلغ',type:'number',required:1},
+    {key:'date',label:'التاريخ',type:'date'},
+    {key:'method',label:'طريقة الدفع',type:'combo',options:PAY_METHODS},
+    {key:'note',label:'البيان',type:'combo',options:PAY_NOTES}
   ], d=>{ const o = kind==='company'?findCompany(id):findCase(id); o.payments.push({id:uid(),...d}); save(); route(); }); }
 function addErrand(cid){ openForm('مأمورية',[
-    {key:'title',label:'المأمورية',required:1},{key:'date',label:'التاريخ',type:'date'}
+    {key:'title',label:'المأمورية',type:'combo',options:ERRAND_TYPES},
+    {key:'date',label:'التاريخ',type:'date'}
   ], d=>{ findCompany(cid).errands.push({id:uid(),done:false,...d}); save(); route(); }); }
 function toggleErrand(cid,eid){ const x=findCompany(cid).errands.find(e=>e.id===eid); x.done=!x.done; save(); route(); }

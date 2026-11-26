@@ -58,13 +58,13 @@ function seedDemo(){
     formationDocs:['عقد التأسيس وتوثيقه','السجل التجاري','البطاقة الضريبية','ملف القيمة المضافة','التأمينات الاجتماعية','صحيفة الاستثمار','الرخصة','السجل الصناعي','التوقيع الإلكتروني'].map((n,i)=>({name:n,status:i<3?'تم':(i<5?'جاري':'لم يبدأ')})),
     amendments:[{id:uid(),type:'تعديل رأس المال',date:todayISO(),status:'مطلوب',notes:'زيادة إلى 250 ألف'}],
     renewals:[{id:uid(),label:'إقرار القيمة المضافة',date:todayISO(),freq:'شهري'},{id:uid(),label:'تجديد السجل التجاري',date:todayISO(),freq:'سنوي'}],
-    payments:[{id:uid(),date:todayISO(),amount:5000,note:'دفعة أولى'}], errands:[{id:uid(),title:'تقديم صحيفة الاستثمار',date:todayISO(),done:false}] };
+    payments:[{id:uid(),date:todayISO(),amount:5000,method:'تحويل بنكي',note:'دفعة أولى'}], errands:[{id:uid(),title:'تقديم صحيفة الاستثمار',date:todayISO(),done:false}] };
   const cl = { id:uid(), name:'محمد عبد الله', phone:'01000000000', nationalId:'', companyId:'' };
   const cs = { id:uid(), number:'4521', year:'2025', court:'محكمة جنوب الجيزة الابتدائية', circuit:'الدائرة 3 مدني', type:'مدني', opponents:'شركة المقاولات المتحدة', status:'متداولة', clientId:cl.id, companyId:'', notes:'', feesAgreed:20000,
-    sessions:[{id:uid(),date:todayISO(),decision:'تأجيل لحين ورود تقرير الخبير',nextDate:todayISO()}],
+    sessions:[{id:uid(),date:todayISO(),decision:'أُجلت لورود تقرير الخبير',nextDate:todayISO()}],
     poas:[{id:uid(),number:'321',year:'2025',office:'مكتب توثيق الدقي',expiry:''}],
-    adminWorks:[{id:uid(),announcementNo:'887',deliveryDate:todayISO(),receiptDate:'',bailiffOffice:'قلم محضرين جنوب الجيزة'}],
-    payments:[{id:uid(),date:todayISO(),amount:8000,note:'مقدم أتعاب'}] };
+    adminWorks:[{id:uid(),announcementNo:'887',announcementType:'صحيفة دعوى',deliveryDate:todayISO(),receiptDate:'',bailiffOffice:'قلم محضرين جنوب الجيزة'}],
+    payments:[{id:uid(),date:todayISO(),amount:8000,method:'نقدي',note:'مقدم أتعاب'}] };
   DB.companies.push(co); DB.clients.push(cl); DB.cases.push(cs);
   DB.expenses.push({id:uid(),date:todayISO(),amount:3000,category:'الإيجارات',note:'إيجار المكتب',refType:'',refId:''});
   save(); route();

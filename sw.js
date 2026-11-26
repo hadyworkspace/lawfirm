@@ -1,4 +1,4 @@
-const CACHE = 'lawfirm-v2';
+const CACHE = 'lawfirm-v3';
 const ASSETS = ['./index.html','./styles.css','./core.js','./home.js','./companies.js','./cases.js','./agenda-accounts.js','./manifest.webmanifest','./logo.png',
   './fonts/tajawal-400.woff2','./fonts/tajawal-500.woff2','./fonts/tajawal-700.woff2','./fonts/tajawal-800.woff2',
   './fonts/ruqaa-400.woff2','./fonts/ruqaa-700.woff2'];
