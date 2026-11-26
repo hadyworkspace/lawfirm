@@ -11,14 +11,53 @@ const PAY_NOTES = ['مقدم أتعاب','دفعة أولى','دفعة تحت ا
 function docPill(s){ return s==='تم'?'ok':(s==='جاري'?'warn':(s==='يحتاج تجديد'?'bad':'grey')); }
 
 function renderCompanies(v){
-  v.innerHTML = `<div class="card">${DB.companies.length ? DB.companies.map(c=>{
-    const done=(c.formationDocs||[]).filter(d=>d.status==='تم').length, tot=(c.formationDocs||[]).length;
-    const pillTxt = tot>0 ? `${done}/${tot} تأسيس` : `${(c.amendments||[]).length.toLocaleString('ar-EG')} تعديل`;
-    return `<div class="list-item" onclick="location.hash='#/companies/${c.id}'">
-      <div><div class="t">${esc(c.name)}</div><div class="muted">${esc(c.activity||'')} ${c.legalForm?'· '+esc(c.legalForm):''}</div></div>
-      <span class="pill">${pillTxt}</span></div>`;
-  }).join('') : `<div class="empty"><div class="eic">${EMPTY_IC}</div>لا شركات بعد.<br>اضغط + لإضافة أول شركة وابدأ ملف التأسيس.</div>`}</div>
+  const tab = sessionStorage.getItem('clisttab')||'التأسيس';
+  const totalAmends = DB.companies.reduce((s,c)=>s+(c.amendments||[]).length,0);
+  let body='';
+  if(tab==='التأسيس'){
+    const list = DB.companies;
+    body = list.length ? list.map(c=>{
+      const done=(c.formationDocs||[]).filter(d=>d.status==='تم').length, tot=(c.formationDocs||[]).length;
+      const pillTxt = tot>0 ? `${done}/${tot} تأسيس` : `${(c.amendments||[]).length.toLocaleString('ar-EG')} تعديل`;
+      return `<div class="list-item" onclick="location.hash='#/companies/${c.id}'">
+        <div><div class="t">${esc(c.name)}</div><div class="muted">${esc(c.activity||'')} ${c.legalForm?'· '+esc(c.legalForm):''}</div></div>
+        <span class="pill">${pillTxt}</span></div>`;
+    }).join('') : `<div class="empty"><div class="eic">${EMPTY_IC}</div>لا شركات بعد.<br>اضغط + لإضافة أول شركة وابدأ ملف التأسيس.</div>`;
+  } else {
+    const all = [];
+    DB.companies.forEach(c=> (c.amendments||[]).forEach(a=> all.push({c,a})) );
+    const types = [...AMEND_TYPES];
+    all.forEach(x=>{ if(x.a.type && !types.includes(x.a.type)) types.push(x.a.type); });
+    body = types.map(t=>{
+      const rows = all.filter(x=>x.a.type===t).sort((x,y)=> (y.a.date||'').localeCompare(x.a.date||''));
+      return `<div class="amend-group">
+        <div class="amend-head"><span class="amend-title">${esc(t)} <span class="cnt">${rows.length.toLocaleString('ar-EG')}</span></span>
+        <button class="btn small gold" data-t="${esc(t)}" onclick="addAmendOfType(this.dataset.t)">+ إضافة</button></div>
+        ${rows.length? rows.map(x=>`<div class="list-item" onclick="cycleAmend('${x.c.id}','${x.a.id}')">
+          <div><div class="t">${esc(x.c.name)}</div><div class="muted">${fmtDate(x.a.date)}${x.a.fees?' · أتعاب: '+fmtMoney(x.a.fees):''}${x.a.notes?' · '+esc(x.a.notes):''}</div></div>
+          <span class="pill ${x.a.status==='تم'?'ok':x.a.status==='جاري'?'warn':'bad'}">${x.a.status}</span></div>`).join('') : '<div class="empty-sm">لا تعديلات من هذا النوع بعد</div>'}
+      </div>`;
+    }).join('');
+    const amendOnly = DB.companies.filter(c=>!(c.formationDocs||[]).length);
+    if(amendOnly.length) body += `<div class="amend-group"><div class="amend-head"><span class="amend-title">شركات قائمة (تعديلات فقط) <span class="cnt">${amendOnly.length.toLocaleString('ar-EG')}</span></span></div>` +
+      amendOnly.map(c=>`<div class="list-item" onclick="location.hash='#/companies/${c.id}'"><div><div class="t">${esc(c.name)}</div><div class="muted">${esc(c.activity||'')} ${c.legalForm?'· '+esc(c.legalForm):''}</div></div><span class="pill">${(c.amendments||[]).length.toLocaleString('ar-EG')} تعديل</span></div>`).join('') + `</div>`;
+  }
+  v.innerHTML = `<div class="tabbing">
+    <button class="${tab==='التأسيس'?'on':''}" onclick="sessionStorage.setItem('clisttab','التأسيس');route()">التأسيس</button>
+    <button class="${tab==='التعديلات'?'on':''}" onclick="sessionStorage.setItem('clisttab','التعديلات');route()">التعديلات (${totalAmends.toLocaleString('ar-EG')})</button></div>
+  <div class="card" style="padding:10px 12px">${body}</div>
   <button class="fab" onclick="addCompany()">+</button>`;
+}
+function addAmendOfType(type){
+  if(!DB.companies.length){ addCompany(); return; }
+  openForm('تعديل جديد',[
+    {key:'companyId',label:'الشركة',type:'select',options:DB.companies.map(c=>({v:c.id,t:c.name}))},
+    {key:'type',label:'نوع التعديل',type:'combo',options:AMEND_TYPES,value:type},
+    {key:'date',label:'التاريخ',type:'date'},
+    {key:'status',label:'الحالة',type:'select',options:['مطلوب','جاري','تم'],value:'مطلوب'},
+    {key:'fees',label:'أتعاب التعديل',type:'number'},
+    {key:'notes',label:'ملاحظات',type:'textarea'}
+  ], d=>{ const c=findCompany(d.companyId); delete d.companyId; c.amendments.push({id:uid(),...d}); save(); route(); });
 }
 function addCompany(){
   openForm('شركة جديدة',[
