@@ -108,7 +108,9 @@ function startIdleWatch(){
 function manageUsers(){
   const users=getUsers(); const role=currentRole();
   const al=localStorage.getItem('lawfirm_autolock')||'0';
-  document.getElementById('modalRoot').innerHTML = `<div class="overlay" onclick="if(event.target===this)closeForm()"><div class="sheet"><div class="handle"></div><h3>المستخدمون والأمان</h3>
+  document.getElementById('modalRoot').innerHTML = `<div class="overlay" onclick="if(event.target===this)closeForm()"><div class="sheet"><div class="handle"></div><h3>المستخدمون والمزامنة</h3>
+  ${window.Sync ? Sync.uiBlock() : ''}
+  <h3 style="margin-top:14px">المستخدمون</h3>
   ${users.map(u=>`<div class="list-item"><div><div class="t">${esc(u.name)}</div><div class="muted">${esc(u.role)}</div></div>
     ${role==='المالك'&&u.role!=='المالك'?`<button class="btn danger small" onclick="removeUser('${esc(u.name)}')">حذف</button>`:''}</div>`).join('')}
   ${role==='المالك'&&users.length<3?`
@@ -124,7 +126,6 @@ function manageUsers(){
     <option value="5" ${al==='5'?'selected':''}>بعد ٥ دقائق خمول</option>
     <option value="15" ${al==='15'?'selected':''}>بعد ١٥ دقيقة خمول</option>
   </select>
-  ${window.Sync ? Sync.uiBlock() : ''}
   <div class="section-note" style="margin-top:14px;line-height:2">ملاحظة: تسجيل الدخول يحمي التطبيق على هذا الجهاز، والمزامنة (عند ربطها أعلاه) تشارك البيانات لحظياً بين أجهزة المكتب المربوطة بنفس الحساب.</div>
   <div class="btnrow"><button class="btn ghost" onclick="closeForm()">إغلاق</button></div>
   </div></div>`;
