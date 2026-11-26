@@ -35,7 +35,8 @@ function downloadICS(filename, events){
   showToast('تم تنزيل ملف التقويم — افتحه ليُضاف إلى تقويم هاتفك', 'info');
 }
 function agendaItemEvent(i){
-  return {id:'ag-'+i.kind+'-'+(i.ref||'')+'-'+i.date, date:i.date, title:i.kind + ': ' + i.label, desc:'من تطبيق المكتب الحكيم — ' + i.kind + '\n' + i.label};
+  const safe = ('ag-'+i.kind+'-'+(i.ref||'')+'-'+i.date).replace(/[^A-Za-z0-9._-]+/g,'');
+  return {id:safe, date:i.date, title:i.kind + ': ' + i.label, desc:'من تطبيق المكتب الحكيم — ' + i.kind + '\n' + i.label};
 }
 function exportAgendaItem(ix){
   const items = window._agendaItems || [];
@@ -51,7 +52,7 @@ function exportSessionICS(caseId, sessionIx){
   const c = findCase(caseId); if(!c) return;
   const s = (c.sessions||[])[sessionIx]; if(!s || !s.nextDate) return;
   downloadICS('جلسة-' + (c.number||'قضية') + '-' + s.nextDate + '.ics', [{
-    id:'sess-'+caseId+'-'+sessionIx+'-'+s.nextDate,
+    id:('sess-'+caseId+'-'+sessionIx+'-'+s.nextDate).replace(/[^A-Za-z0-9._-]+/g,''),
     date: s.nextDate,
     title: 'جلسة: ' + (c.number||'') + ' لسنة ' + (c.year||'') + ' - ' + (c.court||''),
     desc: 'التأجيل من جلسة ' + fmtDate(s.date) + (s.decision ? '\nقرار الجلسة السابقة: ' + s.decision : '') + '\nمن تطبيق المكتب الحكيم',
