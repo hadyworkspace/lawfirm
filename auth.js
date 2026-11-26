@@ -146,4 +146,4 @@ function removeUser(name){
   setUsers(getUsers().filter(u=>u.name!==name)); manageUsers();
 }
 
-window.addEventListener('load', ()=>{ renderLock(); startIdleWatch(); if(window.Sync) Sync.init(); });
+window.addEventListener('load', ()=>{ renderLock(); startIdleWatch(); if(window.Sync){ Sync.init(); route(); } });
