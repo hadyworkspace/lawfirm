@@ -9,7 +9,7 @@ const Sync = {
   _db: null, _auth: null, _unsub: null, _timer: null, _remoteApplying: false,
 
   init(){
-    if(this._db || typeof firebase === 'undefined' || !window.FIREBASE_CONFIG) return;
+    if(this._db || typeof firebase === 'undefined' || typeof FIREBASE_CONFIG === 'undefined') return;
     try{
       firebase.initializeApp(FIREBASE_CONFIG);
       this._auth = firebase.auth();
